@@ -115,39 +115,50 @@ module.exports = yeoman.generators.Base.extend({
      
      // copy files and rename starterkit to projectName
     
-     console.log('Creation project skeleton...');
-     
+     console.log('Creating project skeleton...');
+
      nd.files(source, function (err, files) {
       for ( var i = 0; i < files.length; i++ ) {
         var filename = files[i].replace(/StarterKit/g, projectName)
                                .replace(/starterkit/g, lowerProjectName)
                                .replace('.npmignore', '.gitignore')
-                               .replace(source.replace(/\\/g, '/'), dest.replace(/\\/g, '/'));
-        // if (filename.indexOf('EntityContext.cs') > -1) {
-        //   if (dataProvider.package === '')
-        //     console.log("create-not EntityContext.cs");
-        //   else
-        //     fs.copy(files[i], filename, copyOptions);
-        // }
-        // else
-         
-        fs.copy(files[i], filename, copyOptions);
-
-        // if (filename.indexOf('EntityContext.cs') > -1 || filename.indexOf('dataaccess.json') > -1 ) {
-        //   if (dataProvider.package === '' )
-        //     del.sync(filename, {force: true});
-        // }
+                               .replace('dataaccess.ms.json', 'dataaccess.json')
+                               .replace('dataaccess.npg.json', 'dataaccess.json')
+                               .replace(source, dest);
+        switch (dataProvider.input)
+        {
+          case 'p':
+            if (files[i].indexOf('dataaccess.ms.json') > -1 ||
+                files[i].indexOf('dataaccess.ms.json.dist') > -1 ) {
+              console.log(files[i] + ' not created');
+            } else {
+              fs.copy(files[i], filename, copyOptions);
+            }
+            break;
+          case 's':
+            if (files[i].indexOf('dataaccess.npg.json') > -1 ||
+                files[i].indexOf('dataaccess.npg.json.dist') > -1 ) {
+              console.log(files[i] + ' not created');
+            } else {
+              fs.copy(files[i], filename, copyOptions);
+            }
+            break;
+          default:
+            if (files[i].indexOf('EntityContext.cs') > -1 ||
+                files[i].indexOf('dataaccess.ms.json.dist') > -1 ||
+                files[i].indexOf('dataaccess.npg.json.dist') > -1 ||
+                files[i].indexOf('dataaccess.ms.json') > -1 || 
+                files[i].indexOf('dataaccess.npg.json') > -1 ) {
+              console.log(files[i] + ' not created');
+            }
+            else {
+              fs.copy(files[i], filename, copyOptions);            
+            }
+        }
       }
     });
 
-    //this.fs.delete(path.join('./src', projectName, 'DataAccess/EntityContext.cs'));
-    //fs.delete('./src/Hello/DataAccess/EntityContext.cs');
   },
-
-  // removeDir: function() {
-  //   //this.fs.delete([path.join('./src', projectName, 'DataAccess/EntityContext.cs', './**/dataaccess.json', './**/dataaccess.json.dist']);
-  //   this.fs.delete(path.join('./src', this.props.projectName, 'DataAccess/EntityContext.cs'));
-  // },
 
   install: function () {
     // this.installDependencies();
@@ -156,7 +167,7 @@ module.exports = yeoman.generators.Base.extend({
 });
 
 function getDataProvider(input) {
-  var dataProvider = { package: '', startupServices: '', startupImports: '', startupCtor: '.AddJsonFile("app.json")'};
+  var dataProvider = { input: input, package: '', startupServices: '', startupImports: '', startupCtor: '.AddJsonFile("app.json")' };
   if (input.toLowerCase() === 'p') {
       dataProvider.package = '"Microsoft.EntityFrameworkCore": "1.0.0",\n"Npgsql.EntityFrameworkCore.PostgreSQL": "1.0.1",\n"Digipolis.DataAccess": "2.3.0",';
       dataProvider.startupServices = 'services.AddDataAccess<EntityContext>();\n' +
