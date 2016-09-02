@@ -6,6 +6,7 @@ using Microsoft.Extensions.PlatformAbstractions;
 using StarterKit.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+--dataaccess-startupImports--
 using Digipolis.Web;
 
 namespace StarterKit
@@ -35,6 +36,8 @@ namespace StarterKit
         {
             // Check out ExampleController to find out how these configs are injected into other classes
             services.Configure<AppSettings>(Configuration.GetSection("AppSettings"));
+
+            --dataaccess-startupServices--
 
             services.AddMvc()
                 .AddVersionEndpoint();

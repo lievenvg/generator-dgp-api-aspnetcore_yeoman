@@ -7,6 +7,7 @@ var nd = require('node-dir');
 var Guid = require('guid');
 var updateNotifier = require('update-notifier');
 var pkg = require('./../../package.json');
+var path = require('path');
 
 module.exports = yeoman.generators.Base.extend({
   
@@ -49,6 +50,12 @@ module.exports = yeoman.generators.Base.extend({
       type: 'input',
       name: 'iisHttpsPort',
       message: 'Enter the HTTPS port for the IIS Express server:'
+    },
+    {
+      type: 'input',
+      name: 'dataProvider',
+      message: 'Will you be using Entity Framework with SQLServer, PostgreSQL or Not ? (s/p/n):',
+      default: 'p'
     }];
 
     this.prompt(prompts, function (props) {
@@ -78,6 +85,7 @@ module.exports = yeoman.generators.Base.extend({
     var kestrelHttpPort = this.props.kestrelHttpPort;
     var iisHttpPort = this.props.iisHttpPort;
     var iisHttpsPort = this.props.iisHttpsPort;
+    var dataProvider = getDataProvider(this.props.dataProvider);
     
     var copyOptions = { 
       process: function(contents) {
@@ -92,7 +100,11 @@ module.exports = yeoman.generators.Base.extend({
                         .replace(/0A3016FD-A06C-4AA1-A843-DEA6A2F01696/g, unitGuid.value.toUpperCase())
                         .replace(/http:\/\/localhost:51002/g, "http://localhost:" + kestrelHttpPort)
                         .replace(/http:\/\/localhost:51001/g, "http://localhost:" + iisHttpPort)
-                        .replace(/"sslPort": 44300/g, "\"sslPort\": " + iisHttpsPort);
+                        .replace(/"sslPort": 44300/g, "\"sslPort\": " + iisHttpsPort)
+                        .replace(/--dataaccess-package--/g, dataProvider.package)
+                        .replace(/--dataaccess-startupImports--/g, dataProvider.startupImports)
+                        .replace(/--dataaccess-startupServices--/g, dataProvider.startupServices)
+                        .replace(/.AddJsonFile("app.json")/g, dataProvider.startupCtor);
         return result;
       }
     };
@@ -109,15 +121,65 @@ module.exports = yeoman.generators.Base.extend({
       for ( var i = 0; i < files.length; i++ ) {
         var filename = files[i].replace(/StarterKit/g, projectName)
                                .replace(/starterkit/g, lowerProjectName)
-                               .replace(".npmignore", ".gitignore")
-                               .replace(source, dest);
+                               .replace('.npmignore', '.gitignore')
+                               .replace(source.replace(/\\/g, '/'), dest.replace(/\\/g, '/'));
+        // if (filename.indexOf('EntityContext.cs') > -1) {
+        //   if (dataProvider.package === '')
+        //     console.log("create-not EntityContext.cs");
+        //   else
+        //     fs.copy(files[i], filename, copyOptions);
+        // }
+        // else
+         
         fs.copy(files[i], filename, copyOptions);
+
+        // if (filename.indexOf('EntityContext.cs') > -1 || filename.indexOf('dataaccess.json') > -1 ) {
+        //   if (dataProvider.package === '' )
+        //     del.sync(filename, {force: true});
+        // }
       }
     });
+
+    //this.fs.delete(path.join('./src', projectName, 'DataAccess/EntityContext.cs'));
+    //fs.delete('./src/Hello/DataAccess/EntityContext.cs');
   },
+
+  // removeDir: function() {
+  //   //this.fs.delete([path.join('./src', projectName, 'DataAccess/EntityContext.cs', './**/dataaccess.json', './**/dataaccess.json.dist']);
+  //   this.fs.delete(path.join('./src', this.props.projectName, 'DataAccess/EntityContext.cs'));
+  // },
 
   install: function () {
     // this.installDependencies();
     //this.log('----');
   }
 });
+
+function getDataProvider(input) {
+  var dataProvider = { package: '', startupServices: '', startupImports: '', startupCtor: '.AddJsonFile("app.json")'};
+  if (input.toLowerCase() === 'p') {
+      dataProvider.package = '"Microsoft.EntityFrameworkCore": "1.0.0",\n"Npgsql.EntityFrameworkCore.PostgreSQL": "1.0.1",\n"Digipolis.DataAccess": "2.3.0",';
+      dataProvider.startupServices = 'services.AddDataAccess<EntityContext>();\n' +
+                                     '            var connection = @"Server=127.0.0.1;Port=5432;Database=TestDB;User Id=postgres;Password=postgres;";\n' +
+                                     '            services.AddDbContext<EntityContext>(options => {\n' +
+                                     '                options.UseNpgsql(connection);\n' +
+                                     '                options.ConfigureWarnings(config => config.Throw(RelationalEventId.QueryClientEvaluationWarning));\n' +
+                                     '            });';
+      dataProvider.startupImports = 'using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Digipolis.DataAccess;';
+      dataProvider.startupCtor = '.AddJsonFile("app.json")\n.AddJsonFile("dataaccess.json")';
+  }
+  else if (input.toLowerCase() === 's') {
+      dataProvider.package = '"Microsoft.EntityFrameworkCore": "1.0.0",\n"Microsoft.EntityFrameworkCore.SqlServer": "1.0.0",\n"Digipolis.DataAccess": "2.3.0",';
+      dataProvider.startupServices = 'services.AddDataAccess<EntityContext>();\n' +
+                                     '            var connection = @"Server=127.0.0.1;Database=TestDB;User Id=sqlserver;Password=sqlserver;";\n' +
+                                     '            services.AddDbContext<EntityContext>(options => {\n' +
+                                     '                options.UseSqlServer(connection);\n' +
+                                     '                options.ConfigureWarnings(config => config.Throw(RelationalEventId.QueryClientEvaluationWarning));\n' +
+                                     '            });';
+      dataProvider.startupImports = 'using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Infrastructure;\nusing Digipolis.DataAccess;';
+      dataProvider.startupCtor = '.AddJsonFile("app.json")\n.AddJsonFile("dataaccess.json")';
+  };
+
+  return dataProvider;
+}
+
